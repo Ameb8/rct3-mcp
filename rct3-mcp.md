@@ -2,7 +2,7 @@
 
 A setup guide and implementation spec for letting a command-line coding agent play the original RCT3 by looking at screenshots and sending synthetic mouse and keyboard input.
 
-**Status:** design document. Items marked **VERIFY** depend on your exact game build or macOS version and must be confirmed on your machine, not assumed.
+**Status:** background design reference. [SPEC.md](SPEC.md) is the authoritative v1 implementation specification and takes precedence over this walkthrough. Requirements and optional extensions below are not part of v1 unless included in SPEC.md. Items marked **VERIFY** depend on your exact game build or macOS version and must be confirmed on your machine, not assumed.
 
 ---
 
