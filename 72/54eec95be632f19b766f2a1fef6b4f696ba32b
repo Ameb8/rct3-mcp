@@ -1,0 +1,21 @@
+rct3-mcp.md
+  s_0d0968c79b1730::t_bab5c03d7f6da6 5
+SPEC.md
+  s_0d0968c79b1730::t_bab5c03d7f6da6 1-360
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "development:1.4.12",
+  "base_commit_sha": "7254eec95be632f19b766f2a1fef6b4f696ba32b",
+  "prompts": {},
+  "sessions": {
+    "s_0d0968c79b1730": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18bb3-6a41-7811-b15d-b4eec5341555",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Alex Buckley <alexmeb81@outlook.com>"
+    }
+  }
+}
