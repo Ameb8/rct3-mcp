@@ -1,0 +1,21 @@
+IMPLEMENTATION.md
+  s_0d0968c79b1730::t_83d53a73526dab 1-144
+AGENTS.md
+  s_0d0968c79b1730::t_83d53a73526dab 1-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "development:1.4.12",
+  "base_commit_sha": "8c02f40d3ab4732b19fa3004c4489f1a542e10c7",
+  "prompts": {},
+  "sessions": {
+    "s_0d0968c79b1730": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18bb3-6a41-7811-b15d-b4eec5341555",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Alex Buckley <alexmeb81@outlook.com>"
+    }
+  }
+}
