@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "rct3-control": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "/absolute/path/to/rct3-mcp",
+        "rct3-mcp"
+      ]
+    }
+  }
+}

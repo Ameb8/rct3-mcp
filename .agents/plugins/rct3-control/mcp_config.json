@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "rct3-control": {
+      "command": "uv",
+      "args": ["run", "rct3-mcp"]
+    }
+  }
+}
