@@ -60,19 +60,21 @@ as if it were the repository's development workflow.
 
 ## Checks and evidence
 
-At handoff-document creation, the repository contains documentation only; no
-test, lint, launch, or diagnostic commands have been implemented or verified.
-Do not report prospective commands as existing checks.
+Reproducible commands established and verified:
 
-When scaffolding the project, establish reproducible commands for:
+- Installing locked dependencies with `uv`:
+  `uv sync`
+- Running focused automated tests without a GUI or permissions:
+  `uv run pytest -v`
+- Checking lint and formatting:
+  `uv run ruff check .`
+  `uv run ruff format --check .`
+- Starting the stdio MCP server:
+  `uv run rct3-mcp`
+- Running local diagnostics:
+  `uv run rct3-diagnostics`
 
-- Installing locked dependencies with `uv`.
-- Running focused automated tests without a GUI or permissions.
-- Checking lint and formatting.
-- Starting the stdio MCP server and running local diagnostics.
-
-Document the exact working commands in `README.md` and update this section with
-them. Run relevant checks before handoff. Add meaningful automated coverage for
+Run relevant checks before handoff. Add meaningful automated coverage for
 coordinate transforms, validation, serialization, interruption, input cleanup,
 and MCP image/metadata output as required by SPEC.
 
