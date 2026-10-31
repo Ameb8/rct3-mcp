@@ -1,0 +1,42 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "rct3-control"
+version = "0.1.0"
+description = "MCP server for local RollerCoaster Tycoon 3 control"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "mcp>=1.0.0",
+    "pillow>=10.0.0",
+    "pydantic>=2.0.0",
+    "pyobjc-framework-Quartz>=10.0; sys_platform == 'darwin'",
+    "pyobjc-framework-Cocoa>=10.0; sys_platform == 'darwin'",
+    "pyobjc-framework-ApplicationServices>=10.0; sys_platform == 'darwin'",
+]
+
+[project.scripts]
+rct3-mcp = "rct3_control.server:main"
+rct3-diagnostics = "rct3_control.diagnostics:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/rct3_control"]
+
+[dependency-groups]
+dev = [
+    "hatchling>=1.25.0",
+    "pytest>=9.2.0",
+    "pytest-asyncio>=1.4.1",
+    "ruff>=0.17.3",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]

@@ -1,0 +1,32 @@
+# Python virtual environment and packages
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+
+# Testing and linting caches
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local configuration (SPEC: Keep local configuration out of git)
+config/local.*
+*.local.yaml
+*.local.json
+.env
+
+# Captures and run logs (SPEC: Keep personal screenshots and run logs out of git)
+runs/
+captures/
+logs/
+*.log
+scratch/
+tmp/
+temp/
+
+# OS artifacts
+.DS_Store
