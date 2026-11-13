@@ -198,7 +198,9 @@ class MacOSBackend(PlatformBackend):
         if not self._quartz:
             return []
 
-        window_list = self._quartz.CGWindowListCopyWindowInfo(1 | 16, 0)
+        # kCGWindowListExcludeDesktopElements (16) without kCGWindowListOptionOnScreenOnly (1)
+        # to ensure fullscreen windows on separate Spaces are discoverable.
+        window_list = self._quartz.CGWindowListCopyWindowInfo(16, 0)
         if not window_list:
             return []
 
@@ -240,7 +242,9 @@ class MacOSBackend(PlatformBackend):
         windows = self.list_windows()
         for win in windows:
             if win.window_id == window_id:
-                title_bar_h = 28
+                # In fullscreen mode, origin is (0, 0) and there is no macOS window title bar
+                is_fullscreen = win.bounds.x == 0 and win.bounds.y == 0
+                title_bar_h = 0 if is_fullscreen else 28
                 content_rect = Rect(
                     x=0,
                     y=title_bar_h,
@@ -254,7 +258,7 @@ class MacOSBackend(PlatformBackend):
                     height=win.bounds.height,
                     scale=1.0,
                     content_rect=content_rect,
-                    has_title_bar=True,
+                    has_title_bar=not is_fullscreen,
                     title_bar_height=title_bar_h,
                 )
         return None

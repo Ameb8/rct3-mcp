@@ -1,18 +1,22 @@
 """End-to-end integration test for stdio MCP protocol transport and stdout isolation."""
 
 import json
+import os
 import subprocess
 import sys
 
 
 def test_stdio_protocol_and_stdout_isolation():
-    # Launch rct3-mcp subprocess
+    # Launch rct3-mcp subprocess with mock backend to isolate protocol test from live windows
+    env = os.environ.copy()
+    env["RCT3_MOCK_BACKEND"] = "1"
     proc = subprocess.Popen(
         [sys.executable, "-m", "rct3_control.server"],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
+        env=env,
     )
 
     try:
@@ -43,7 +47,9 @@ def test_stdio_protocol_and_stdout_isolation():
         assert init_resp["result"]["serverInfo"]["name"] == "rct3-control"
 
         # 2. Send initialized notification
-        proc.stdin.write(json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}) + "\n")
+        proc.stdin.write(
+            json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}) + "\n"
+        )
         proc.stdin.flush()
 
         # 3. Call tools/list
