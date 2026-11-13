@@ -7,6 +7,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 
 from PIL import Image
 
@@ -225,6 +226,13 @@ class MacOSBackend(PlatformBackend):
             if layer != 0 or rect.width < 100 or rect.height < 100:
                 continue
 
+            app = (
+                self._appkit.NSRunningApplication.runningApplicationWithProcessIdentifier_(pid)
+                if self._appkit
+                else None
+            )
+            is_active = bool(app and app.isActive())
+
             results.append(
                 WindowInfo(
                     window_id=int(win.get("kCGWindowNumber", 0)),
@@ -232,11 +240,21 @@ class MacOSBackend(PlatformBackend):
                     owner_pid=pid,
                     title=str(win.get("kCGWindowName", "") or ""),
                     bounds=rect,
-                    is_focused=(front_pid is not None and pid == front_pid),
+                    is_focused=is_active or (front_pid is not None and pid == front_pid),
                     layer=layer,
                 )
             )
         return results
+
+    def _get_scale(self) -> float:
+        if self._appkit:
+            try:
+                screen = self._appkit.NSScreen.mainScreen()
+                if screen:
+                    return float(screen.backingScaleFactor())
+            except (AttributeError, OSError, RuntimeError):
+                return 1.0
+        return 1.0
 
     def get_window_geometry(self, window_id: int) -> WindowGeometry | None:
         windows = self.list_windows()
@@ -245,18 +263,19 @@ class MacOSBackend(PlatformBackend):
                 # In fullscreen mode, origin is (0, 0) and there is no macOS window title bar
                 is_fullscreen = win.bounds.x == 0 and win.bounds.y == 0
                 title_bar_h = 0 if is_fullscreen else 28
+                scale = self._get_scale()
                 content_rect = Rect(
                     x=0,
-                    y=title_bar_h,
-                    width=win.bounds.width,
-                    height=max(0, win.bounds.height - title_bar_h),
+                    y=int(title_bar_h * scale),
+                    width=int(win.bounds.width * scale),
+                    height=max(0, int((win.bounds.height - title_bar_h) * scale)),
                 )
                 return WindowGeometry(
                     origin_x=win.bounds.x,
                     origin_y=win.bounds.y,
                     width=win.bounds.width,
                     height=win.bounds.height,
-                    scale=1.0,
+                    scale=scale,
                     content_rect=content_rect,
                     has_title_bar=not is_fullscreen,
                     title_bar_height=title_bar_h,
@@ -285,13 +304,15 @@ class MacOSBackend(PlatformBackend):
                 with Image.open(io.BytesIO(png_bytes)) as img:
                     img_w, _ = img.size
                     scale = img_w / geo.width if geo.width > 0 else 1.0
-                    geo.scale = scale
-                    geo.content_rect = Rect(
-                        x=int(geo.content_rect.x * scale),
-                        y=int(geo.content_rect.y * scale),
-                        width=int(geo.content_rect.width * scale),
-                        height=int(geo.content_rect.height * scale),
-                    )
+                    if scale != geo.scale:
+                        scale_factor = scale / geo.scale if geo.scale > 0 else 1.0
+                        geo.scale = scale
+                        geo.content_rect = Rect(
+                            x=int(geo.content_rect.x * scale_factor),
+                            y=int(geo.content_rect.y * scale_factor),
+                            width=int(geo.content_rect.width * scale_factor),
+                            height=int(geo.content_rect.height * scale_factor),
+                        )
 
                 return png_bytes, geo
             else:
@@ -311,11 +332,15 @@ class MacOSBackend(PlatformBackend):
         if self._appkit:
             app = self._appkit.NSRunningApplication.runningApplicationWithProcessIdentifier_(pid)
             if app:
-                return bool(app.activateWithOptions_(2))
+                # 3 = NSApplicationActivateAllWindows | NSApplicationActivateIgnoringOtherApps
+                return bool(app.activateWithOptions_(3))
         return False
 
     def is_window_focused(self, pid: int) -> bool:
         if self._appkit:
+            app = self._appkit.NSRunningApplication.runningApplicationWithProcessIdentifier_(pid)
+            if app and app.isActive():
+                return True
             front = self._appkit.NSWorkspace.sharedWorkspace().frontmostApplication()
             return bool(front and front.processIdentifier() == pid)
         return False
@@ -328,28 +353,42 @@ class MacOSBackend(PlatformBackend):
                 return (int(loc.x), int(loc.y))
         return (0, 0)
 
+    def _event_source(self):
+        if self._quartz:
+            return self._quartz.CGEventSourceCreate(
+                self._quartz.kCGEventSourceStateCombinedSessionState
+            )
+        return None
+
+    def _post_event(self, event) -> None:
+        if self._quartz and event:
+            self._quartz.CGEventPost(self._quartz.kCGSessionEventTap, event)
+
     def post_mouse_move(self, x: int, y: int) -> None:
         if not self._quartz:
             return
         point = self._quartz.CGPoint(x=float(x), y=float(y))
-        event = self._quartz.CGEventCreateMouseEvent(None, 5, point, 0)
-        self._quartz.CGEventPost(self._quartz.kCGHIDEventTap, event)
+        src = self._event_source()
+        event = self._quartz.CGEventCreateMouseEvent(src, 5, point, 0)
+        self._post_event(event)
 
     def post_mouse_down(self, x: int, y: int, button: MouseButton = "left") -> None:
         if not self._quartz:
             return
         point = self._quartz.CGPoint(x=float(x), y=float(y))
         event_type, btn_num = self._mouse_button_mapping(button, is_down=True)
-        event = self._quartz.CGEventCreateMouseEvent(None, event_type, point, btn_num)
-        self._quartz.CGEventPost(self._quartz.kCGHIDEventTap, event)
+        src = self._event_source()
+        event = self._quartz.CGEventCreateMouseEvent(src, event_type, point, btn_num)
+        self._post_event(event)
 
     def post_mouse_up(self, x: int, y: int, button: MouseButton = "left") -> None:
         if not self._quartz:
             return
         point = self._quartz.CGPoint(x=float(x), y=float(y))
         event_type, btn_num = self._mouse_button_mapping(button, is_down=False)
-        event = self._quartz.CGEventCreateMouseEvent(None, event_type, point, btn_num)
-        self._quartz.CGEventPost(self._quartz.kCGHIDEventTap, event)
+        src = self._event_source()
+        event = self._quartz.CGEventCreateMouseEvent(src, event_type, point, btn_num)
+        self._post_event(event)
 
     def post_mouse_click(
         self, x: int, y: int, button: MouseButton = "left", count: int = 1
@@ -359,17 +398,18 @@ class MacOSBackend(PlatformBackend):
         point = self._quartz.CGPoint(x=float(x), y=float(y))
         down_type, btn_num = self._mouse_button_mapping(button, is_down=True)
         up_type, _ = self._mouse_button_mapping(button, is_down=False)
+        src = self._event_source()
 
         for c in range(1, count + 1):
-            down_ev = self._quartz.CGEventCreateMouseEvent(None, down_type, point, btn_num)
+            down_ev = self._quartz.CGEventCreateMouseEvent(src, down_type, point, btn_num)
             self._quartz.CGEventSetIntegerValueField(
                 down_ev, self._quartz.kCGMouseEventClickState, c
             )
-            self._quartz.CGEventPost(self._quartz.kCGHIDEventTap, down_ev)
-
-            up_ev = self._quartz.CGEventCreateMouseEvent(None, up_type, point, btn_num)
+            self._post_event(down_ev)
+            time.sleep(0.08)
+            up_ev = self._quartz.CGEventCreateMouseEvent(src, up_type, point, btn_num)
             self._quartz.CGEventSetIntegerValueField(up_ev, self._quartz.kCGMouseEventClickState, c)
-            self._quartz.CGEventPost(self._quartz.kCGHIDEventTap, up_ev)
+            self._post_event(up_ev)
 
     def post_mouse_drag_move(self, x: int, y: int, button: MouseButton = "left") -> None:
         if not self._quartz:
@@ -384,15 +424,17 @@ class MacOSBackend(PlatformBackend):
         else:
             event_type = 27
             btn_num = 2
-        event = self._quartz.CGEventCreateMouseEvent(None, event_type, point, btn_num)
-        self._quartz.CGEventPost(self._quartz.kCGHIDEventTap, event)
+        src = self._event_source()
+        event = self._quartz.CGEventCreateMouseEvent(src, event_type, point, btn_num)
+        self._post_event(event)
 
     def post_scroll(self, x: int, y: int, steps: int) -> None:
         if not self._quartz:
             return
         self.post_mouse_move(x, y)
-        event = self._quartz.CGEventCreateScrollWheelEvent(None, 1, 1, steps)
-        self._quartz.CGEventPost(self._quartz.kCGHIDEventTap, event)
+        src = self._event_source()
+        event = self._quartz.CGEventCreateScrollWheelEvent(src, 1, 1, steps)
+        self._post_event(event)
 
     def post_key_down(self, key: str, modifiers: list[str] | None = None) -> None:
         if not self._quartz:
@@ -404,13 +446,14 @@ class MacOSBackend(PlatformBackend):
                 f"Unsupported key: {key}",
                 f"Supported keys include: {', '.join(list(KEY_MAP.keys())[:15])}...",
             )
-        event = self._quartz.CGEventCreateKeyboardEvent(None, keycode, True)
+        src = self._event_source()
+        event = self._quartz.CGEventCreateKeyboardEvent(src, keycode, True)
         if modifiers:
             flags = 0
             for m in modifiers:
                 flags |= MODIFIER_FLAG_MAP.get(m.lower(), 0)
             self._quartz.CGEventSetFlags(event, flags)
-        self._quartz.CGEventPost(self._quartz.kCGHIDEventTap, event)
+        self._post_event(event)
 
     def post_key_up(self, key: str, modifiers: list[str] | None = None) -> None:
         if not self._quartz:
@@ -418,20 +461,22 @@ class MacOSBackend(PlatformBackend):
         keycode = KEY_MAP.get(key.lower())
         if keycode is None:
             return
-        event = self._quartz.CGEventCreateKeyboardEvent(None, keycode, False)
-        self._quartz.CGEventPost(self._quartz.kCGHIDEventTap, event)
+        src = self._event_source()
+        event = self._quartz.CGEventCreateKeyboardEvent(src, keycode, False)
+        self._post_event(event)
 
     def release_all(self) -> None:
         if not self._quartz:
             return
         loc = self.get_pointer_position()
         point = self._quartz.CGPoint(x=float(loc[0]), y=float(loc[1]))
-        up_ev_left = self._quartz.CGEventCreateMouseEvent(None, 2, point, 0)
-        self._quartz.CGEventPost(self._quartz.kCGHIDEventTap, up_ev_left)
-        up_ev_right = self._quartz.CGEventCreateMouseEvent(None, 4, point, 1)
-        self._quartz.CGEventPost(self._quartz.kCGHIDEventTap, up_ev_right)
-        up_ev_mid = self._quartz.CGEventCreateMouseEvent(None, 26, point, 2)
-        self._quartz.CGEventPost(self._quartz.kCGHIDEventTap, up_ev_mid)
+        src = self._event_source()
+        up_ev_left = self._quartz.CGEventCreateMouseEvent(src, 2, point, 0)
+        self._post_event(up_ev_left)
+        up_ev_right = self._quartz.CGEventCreateMouseEvent(src, 4, point, 1)
+        self._post_event(up_ev_right)
+        up_ev_mid = self._quartz.CGEventCreateMouseEvent(src, 26, point, 2)
+        self._post_event(up_ev_mid)
 
     def _mouse_button_mapping(self, button: MouseButton, is_down: bool) -> tuple[int, int]:
         if button == "left":

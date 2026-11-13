@@ -2,7 +2,12 @@
   "mcpServers": {
     "rct3-control": {
       "command": "uv",
-      "args": ["run", "rct3-mcp"]
+      "args": [
+        "run",
+        "--directory",
+        "/Users/pattycrowder/Documents/Alex_Documents/Projects/rct3-mcp",
+        "rct3-mcp"
+      ]
     }
   }
 }

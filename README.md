@@ -7,7 +7,7 @@ Local computer-control MCP server designed to let Antigravity CLI and vision-cap
 ## 1. Prerequisites and Environment
 
 - **Machine**: Intel Mac (`x86_64`) running macOS 14+ (or compatible).
-- **Game**: RollerCoaster Tycoon 3 Complete Edition installed via Steam, running natively in **windowed mode**.
+- **Game**: RollerCoaster Tycoon 3 Complete Edition installed via Steam, running natively in **Fullscreen Mode** (macOS port runs fullscreen; windowed mode is not supported by the Aspyr port).
 - **Python Toolchain**: Python 3.12+ managed by [`uv`](https://docs.astral.sh/uv/).
 - **Agent Host**: Antigravity CLI connected via stdio transport.
 
@@ -37,10 +37,10 @@ To capture the game window and inject mouse/keyboard events, macOS requires expl
 
 ## 3. Game and Window Setup
 
-1. Launch Steam and open **RollerCoaster Tycoon 3 Complete Edition**.
-2. In the game options, ensure the display is set to **Windowed Mode** (e.g. 1280x720 or a size that comfortably fits your screen).
-3. Load a sandbox park or scenario.
-4. Ensure the game window remains visible and not minimized.
+1. Launch Steam and open **RollerCoaster Tycoon 3 Complete Edition** (launches in fullscreen).
+2. Load a sandbox park or scenario.
+3. The game can remain running or paused (in RCT3, menus, rides, and paths can be placed while paused).
+4. Note on macOS Spaces: macOS automatically assigns the fullscreen game to its own Space. When an MCP action executes, the server automatically brings RCT3 to the front and activates its Space. If using dual monitors or iPad Sidecar, keep RCT3 on Display 1 and your terminal on Display 2 for simultaneous viewing.
 
 ---
 
@@ -81,7 +81,7 @@ Add the server to your `~/.gemini/config/mcp_config.json` (or use the workspace 
       "args": [
         "run",
         "--directory",
-        "/absolute/path/to/rct3-mcp",
+        "/Users/pattycrowder/Documents/Alex_Documents/Projects/rct3-mcp",
         "rct3-mcp"
       ]
     }

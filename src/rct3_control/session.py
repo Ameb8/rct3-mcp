@@ -195,7 +195,10 @@ class GameSession:
         ):
             self.backend.focus_window(self.selected_window_pid)
             # Brief settle for focus
-            time.sleep(0.05)
+            for _ in range(10):
+                time.sleep(0.05)
+                if self.backend.is_window_focused(self.selected_window_pid):
+                    break
             if not self.backend.is_window_focused(self.selected_window_pid):
                 raise RCT3ControlError(
                     ErrorCode.FOCUS_LOST,
